@@ -33,6 +33,11 @@ export const usersRoute = new Elysia({ prefix: "/api/users" })
         email: t.String({ maxLength: 255 }),
         password: t.String({ maxLength: 255 }),
       }),
+      response: {
+        200: t.Object({ data: t.String() }),
+        400: t.Object({ error: t.String() }),
+        500: t.Object({ error: t.String() }),
+      },
     }
   )
   .post(
@@ -54,6 +59,11 @@ export const usersRoute = new Elysia({ prefix: "/api/users" })
         email: t.String({ maxLength: 255 }),
         password: t.String({ maxLength: 255 }),
       }),
+      response: {
+        200: t.Object({ data: t.String() }),
+        400: t.Object({ error: t.String() }),
+        500: t.Object({ error: t.String() }),
+      },
     }
   )
   .get("/current", async ({ token, set }) => {
@@ -70,6 +80,19 @@ export const usersRoute = new Elysia({ prefix: "/api/users" })
       set.status = 500;
       return { error: "Terjadi kesalahan pada server" };
     }
+  }, {
+    response: {
+      200: t.Object({
+        data: t.Object({
+          id: t.Number(),
+          name: t.String(),
+          email: t.String(),
+          createdAt: t.Any(),
+        })
+      }),
+      401: t.Object({ error: t.String() }),
+      500: t.Object({ error: t.String() }),
+    }
   })
   .delete("/logout", async ({ token, set }) => {
     try {
@@ -84,5 +107,11 @@ export const usersRoute = new Elysia({ prefix: "/api/users" })
       }
       set.status = 500;
       return { error: "Terjadi kesalahan pada server" };
+    }
+  }, {
+    response: {
+      200: t.Object({ data: t.String() }),
+      401: t.Object({ error: t.String() }),
+      500: t.Object({ error: t.String() }),
     }
   });
