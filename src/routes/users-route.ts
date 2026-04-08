@@ -23,4 +23,25 @@ export const usersRoute = new Elysia({ prefix: "/api/users" })
         password: t.String(),
       }),
     }
+  )
+  .post(
+    "/login",
+    async ({ body, set }) => {
+      try {
+        return await UserService.login(body);
+      } catch (error: any) {
+        if (error.message === "Email atau password salah") {
+          set.status = 400;
+          return { error: error.message };
+        }
+        set.status = 500;
+        return { error: "Terjadi kesalahan pada server" };
+      }
+    },
+    {
+      body: t.Object({
+        email: t.String(),
+        password: t.String(),
+      }),
+    }
   );
