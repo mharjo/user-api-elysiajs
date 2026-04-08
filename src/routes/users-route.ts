@@ -2,6 +2,17 @@ import { Elysia, t } from "elysia";
 import { UserService } from "../services/users-service";
 
 export const usersRoute = new Elysia({ prefix: "/api/users" })
+  .derive(({ headers }) => {
+    const authHeader = headers["authorization"];
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      return {
+        token: authHeader.substring(7),
+      };
+    }
+    return {
+      token: null,
+    };
+  })
   .post(
     "/",
     async ({ body, set }) => {
@@ -45,14 +56,11 @@ export const usersRoute = new Elysia({ prefix: "/api/users" })
       }),
     }
   )
-  .get("/current", async ({ headers, set }) => {
+  .get("/current", async ({ token, set }) => {
     try {
-      const authHeader = headers["authorization"];
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      if (!token) {
         throw new Error("Unauthorized");
       }
-
-      const token = authHeader.replace("Bearer ", "");
       return await UserService.getCurrentUser(token);
     } catch (error: any) {
       if (error.message === "Unauthorized") {
@@ -63,14 +71,11 @@ export const usersRoute = new Elysia({ prefix: "/api/users" })
       return { error: "Terjadi kesalahan pada server" };
     }
   })
-  .delete("/logout", async ({ headers, set }) => {
+  .delete("/logout", async ({ token, set }) => {
     try {
-      const authHeader = headers["authorization"];
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      if (!token) {
         throw new Error("Unauthorized");
       }
-
-      const token = authHeader.replace("Bearer ", "");
       return await UserService.logout(token);
     } catch (error: any) {
       if (error.message === "Unauthorized") {
