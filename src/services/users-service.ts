@@ -4,6 +4,15 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export const UserService = {
+  /**
+   * Mendaftarkan pengguna baru ke dalam sistem.
+   * Fungsi ini akan mengecek duplikasi email, melakukan hashing pada password,
+   * dan menyimpan data pengguna ke tabel `users`.
+   * 
+   * @param data - Objek berisi `name`, `email`, dan `password`.
+   * @returns Respons berhasil `{ data: "OK" }`.
+   * @throws Error jika email sudah terdaftar sebelumnya.
+   */
   async register(data: typeof users.$inferInsert) {
     // Check if email already exists
     const existingUser = await db.query.users.findFirst({
@@ -26,6 +35,15 @@ export const UserService = {
     return { data: "OK" };
   },
 
+  /**
+   * Mengautentikasi pengguna berdasarkan kombinasi email dan password.
+   * Fungsi ini akan memverifikasi keberadaan email, mencocokkan hash password,
+   * dan membuat token sesi (UUID) baru yang disimpan di tabel `sessions`.
+   * 
+   * @param data - Objek berisi `email` dan `password`.
+   * @returns Respons berisi token sesi `{ data: "<UUID>" }`.
+   * @throws Error "Email atau password salah" jika kredensial tidak valid.
+   */
   async login(data: Pick<typeof users.$inferInsert, "email" | "password">) {
     // Find user by email
     const user = await db.query.users.findFirst({
@@ -55,6 +73,15 @@ export const UserService = {
     return { data: token };
   },
 
+  /**
+   * Mengambil data profil pengguna yang sedang login berdasarkan token sesi.
+   * Berfungsi sekaligus memeriksa kelayakan otorisasi pengguna. Field `password`
+   * akan dibuang dari objek data sebelum dikembalikan untuk alasan keamanan.
+   * 
+   * @param token - String token otorisasi dari header Bearer.
+   * @returns Objek memuat data pengguna `{ data: userWithoutPassword }`.
+   * @throws Error "Unauthorized" jika token kosong atau tidak ditemukan di database.
+   */
   async getCurrentUser(token: string) {
     if (!token) {
       throw new Error("Unauthorized");
@@ -84,6 +111,15 @@ export const UserService = {
     return { data: userWithoutPassword };
   },
 
+  /**
+   * Mengakhiri sesi pengguna aktif (Logout).
+   * Menghapus secara permanen record sesi pengguna di tabel `sessions` yang 
+   * memiliki token identik dengan input.
+   * 
+   * @param token - String token sesi milik pengguna.
+   * @returns Respons konfirmasi sukses `{ data: "OK" }`.
+   * @throws Error "Unauthorized" bila referensi token tidak valid.
+   */
   async logout(token: string) {
     if (!token) {
       throw new Error("Unauthorized");
