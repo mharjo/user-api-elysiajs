@@ -1,21 +1,21 @@
 # User Authentication API
 
-Aplikasi backend API mandiri yang dirancang khusus untuk menangani fungsionalitas manajemen pengguna (User Management) dan sistem autentikasi. Proyek ini dibangun mengedepankan performa tinggi dengan kerangka kerja modern.
+Aplikasi backend API yang dirancang untuk menangani manajemen pengguna (*User Management*) dan sistem autentikasi. Proyek ini dikembangkan dengan mengutamakan performa tinggi menggunakan ekosistem pengembangan modern.
 
-## 🚀 Technology Stack & Libraries
-Aplikasi ini memanfaatkan teknologi dan *library* state-of-the-art:
-- **Runtime**: [Bun](https://bun.sh/) (JavaScript runtime yang super cepat)
-- **Framework**: [ElysiaJS](https://elysiajs.com/) (Web framework yang sangat dioptimalkan untuk Bun)
+## 🚀 Teknologi Utama & *Library*
+Aplikasi ini dibangun menggunakan teknologi berikut:
+- **Runtime**: [Bun](https://bun.sh/) (Runtime JavaScript berkinerja tinggi)
+- **Framework**: [ElysiaJS](https://elysiajs.com/) (Web framework yang dioptimalkan untuk Bun)
 - **Database**: MySQL
-- **ORM**: [Drizzle ORM](https://orm.drizzle.team/) (TypeScript ORM yang aman dan berorientasi *Type-Safe*)
+- **ORM**: [Drizzle ORM](https://orm.drizzle.team/) (ORM TypeScript dengan dukungan *Type-Safe*)
 - **Driver**: `mysql2`
-- **Security**: `bcryptjs` (untuk proses enkripsi/hashing *password* pengguna)
+- **Keamanan**: `bcryptjs` (Digunakan untuk proses *hashing password*)
 
 ---
 
 ## 🏗️ Arsitektur & Struktur Folder
 
-Aplikasi ini menggunakan pola arsitektur **Service-Route**. Pola ini memisahkan secara tegas antara gerbang penerimaan *request* (Route) dengan area pemrosesan logika bisnis utama (Service).
+Aplikasi ini secara spesifik mengadopsi pola arsitektur **Service-Route**. Pola ini secara jelas memisahkan lapisan pengaturan jalur (*Routing*) dari lapisan pemrosesan logika bisnis (*Service*).
 
 ### Struktur Direktori:
 ```text
@@ -23,80 +23,116 @@ Aplikasi ini menggunakan pola arsitektur **Service-Route**. Pola ini memisahkan 
  ┣ 📂 src
  ┃ ┣ 📂 db
  ┃ ┃ ┣ 📜 index.ts        # Konfigurasi instansi dan koneksi MySQL
- ┃ ┃ ┗ 📜 schema.ts       # Definisi pemetaan tabel Drizzle ORM
+ ┃ ┃ ┗ 📜 schema.ts       # Definisi skema tabel Drizzle ORM
  ┃ ┣ 📂 routes
- ┃ ┃ ┗ 📜 users-route.ts  # Endpoint presentasi API & Validasi DTO (TypeBox)
+ ┃ ┃ ┗ 📜 users-route.ts  # Definisi Endpoint API & Validasi DTO (TypeBox)
  ┃ ┣ 📂 services
- ┃ ┃ ┗ 📜 users-service.ts# Pure business logic & operasi database (CRUD)
+ ┃ ┃ ┗ 📜 users-service.ts# Logika bisnis utama & operasi database (CRUD)
  ┃ ┗ 📜 index.ts          # Entry point aplikasi (Inisialisasi server Elysia)
  ┣ 📂 tests
- ┃ ┗ 📜 users.test.ts     # File skenario otomatis Unit/Integration Test
- ┣ 📜 drizzle.config.ts   # Konfigurasi migrasi Drizzle Kit
- ┣ 📜 .env.example        # Contoh environment variables keamanan
+ ┃ ┗ 📜 users.test.ts     # Skenario pengujian penuh (Unit Test & Integration Test)
+ ┣ 📜 drizzle.config.ts   # Konfigurasi Drizzle Kit untuk migrasi database
+ ┣ 📜 .env.example        # Berkas contoh konfigurasi environment variables
  ┗ 📜 package.json
 ```
 
-### Konvensi Penamaan (Naming Conventions):
-- **Folder `routes/`**: Penulisan menggunakan format "jamak" entitas lalu spesifikasi layanannya. Contoh: `users-route.ts`. Lapisan kode disini dibatasi pada pengaturan ekstensi Elysia, Header, Validasi HTTP, dll.
-- **Folder `services/`**: Penulisan seragam selayaknya route. Contoh `users-service.ts`. Berisi serangkaian *object/class* untuk memanipulasi *database*, mengecek logika bisnis, hingga validasi kata sandi.
+### Konvensi Penamaan (*Naming Conventions*):
+- **Folder `routes/`**: Menggunakan format *plural* atau jamak untuk entitas (contoh: `users-route.ts`). Lapisan kode ini difokuskan pada pengaturan respons API, ekstraksi Header, pengembalian kode status HTTP, dan perlindungan masukan DTO.
+- **Folder `services/`**: Menyesuaikan dengan format *routes* (contoh: `users-service.ts`). File berisi kumpulan logika terisolasi untuk memanipulasi operasi basis data dan pengecekan keamanan utama.
+
+### Diagram Alir Autentikasi (*Authentication Flow*)
+Sistem ini memproses otentikasi menggunakan pola token berbasis sekuritas kerahasiaan. Berikut adalah ilustrasi pertukaran data antara Klien, API, *Service*, dan *Database*.
+
+```mermaid
+sequenceDiagram
+    participant C as Klien (Frontend/Mobile)
+    participant API as ElysiaJS (Routes)
+    participant S as UserService
+    participant DB as MySQL Database
+
+    %% Login Flow
+    Note over C,DB: Alur Login (Mendapatkan Token)
+    C->>API: POST /api/users/login (email, password)
+    API->>S: Panggil login() & validasi kredensial
+    S->>DB: Cari detail pengguna (users) berdasarkan email
+    DB-->>S: Kembalikan record pengguna
+    S->>S: Verifikasi hash sandi (bcrypt.compare)
+    S->>DB: Bangkitkan UUID token ke (sessions)
+    S-->>API: Resolusi kembalian Token
+    API-->>C: 200 OK { data: "<UUID_TOKEN>" }
+
+    %% Protected Route Flow
+    Note over C,DB: Alur Rute Terproteksi (Akses Profil)
+    C->>API: GET /api/users/current
+    Note over C,API: Menyisipkan Header -> Authorization: Bearer <token>
+    API->>API: Ekstraksi pemisahan format Bearer
+    API->>S: Panggil getCurrentUser(token)
+    S->>DB: Pencocokan eksistensi token aktif (sessions)
+    DB-->>S: Kembalikan referensi sesi
+    S->>DB: Tarik profil pengguna sesuai ID sesi
+    DB-->>S: Kembalikan data profil utuh
+    S->>S: Sensor penyembunyian field 'password'
+    S-->>API: Pengembalian objek steril
+    API-->>C: 200 OK { data: Profil Pengguna }
+```
 
 ---
 
-## 🗄️ Database Schema
+## 🗄️ Skema Database
 
-Sistem memiliki relasi database sederhana untuk mengamankan identifikasi pelacakan data pengguna dan status sesi aktif.
+Sistem ini memiliki dua tabel utama untuk menyimpan data otentikasi serta status sesi.
 
 1. **Tabel `users`**
-   - `id`: *INT* (Primary Key, Auto Increment)
-   - `name`: *VARCHAR(255)* (Maksimal 255 karakter, Tidak boleh dibiarkan kosong)
-   - `email`: *VARCHAR(255)* (Harus karakter unik/belum pernah ada, Tidak boleh kosong)
-   - `password`: *VARCHAR(255)* (Disimpan dalam wujud *encrypted hash*, Tidak boleh kosong)
-   - `created_at`: *TIMESTAMP* (Otomatis tercatat pada saat row dibuat)
+   - `id`: *INT* (*Primary Key*, Auto Increment)
+   - `name`: *VARCHAR(255)* (Wajib diisi)
+   - `email`: *VARCHAR(255)* (Wajib diisi dan nilainya harus bersifat unik)
+   - `password`: *VARCHAR(255)* (Disimpan melalui algoritma enkripsi satu arah, wajib diisi)
+   - `created_at`: *TIMESTAMP* (Dicatat secara otomatis oleh sistem waktu basis data)
 
 2. **Tabel `sessions`**
-   - `id`: *INT* (Primary Key, Auto Increment)
-   - `token`: *VARCHAR(255)* (Token UUID unik pengganti session log-in)
-   - `user_id`: *INT* (Terkait kuat relasi referensial terhadap field id milik tabel users)
-   - `created_at`: *TIMESTAMP* (Otomatis tercatat *timestamp*-nya)
+   - `id`: *INT* (*Primary Key*, Auto Increment)
+   - `token`: *VARCHAR(255)* (Token berformat UUID sebagai tanda pengenal sesi valid pengguna)
+   - `user_id`: *INT* (*Foreign Key* merujuk pada tabel `users`)
+   - `created_at`: *TIMESTAMP*
 
 ---
 
-## 🔌 API Endpoints
-Seluruh rute pada modul *Users* aplikasi tergabung menjadi satu kesatuan di prefiks utama `/api/users`.
+## 🔌 Dokumentasi REST API (*Endpoints*)
+Seluruh titik akses API dikelompokkan di bawah parameter prefiks utama `/api/users`. Anda juga dapat menjelajahi fungsionalitasnya secara GUI melalui fitur interaktif **Swagger**.
 
-1. **Registrasi Pelanggan Baru**
-   - **Endpoint**: `POST /api/users`
-   - **Body (JSON)**: `name`, `email`, `password` (Dilengkapi validasi max length string 255).
-   - **Respons Sukses**: `{ "data": "OK" }`
+1. **Registrasi Pengguna**
+   - **Metode & Endpoint**: `POST /api/users`
+   - **Body (JSON)**: `name`, `email`, `password` (Dilengkapi validasi *maximum length* sebesar 255 karakter).
+   - **Respons Berhasil**: `{ "data": "OK" }`
 
-2. **Login Pelanggan**
-   - **Endpoint**: `POST /api/users/login`
+2. **Login Pengguna**
+   - **Metode & Endpoint**: `POST /api/users/login`
    - **Body (JSON)**: `email`, `password`
-   - **Respons Sukses**: `{ "data": "<UUID_TOKEN_LOGIN_BARU>" }`
+   - **Respons Berhasil**: `{ "data": "<UUID_TOKEN>" }`
 
-3. **Get Current User (Validasi Profile)**
-   - **Endpoint**: `GET /api/users/current`
-   - **Headers Wajib**: `Authorization: Bearer <TOKEN>`
-   - **Respons Sukses**: Menampilkan rekaman detil informasi pengguna utuh namun atribut `password` di potong. Gagal memvalidasi akan mengeluarkan pesan status tertolak Unauthorized 401.
+3. **Memeriksa Profil Pengguna (*Get Current User*)**
+   - **Metode & Endpoint**: `GET /api/users/current`
+   - **Header Wajib**: `Authorization: Bearer <TOKEN>`
+   - **Respons Berhasil**: Menampilkan data detail informasi profil pengguna murni dari basis data tanpa mengekspos atribut kata sandi. Kegagalan token memicu respons standar `401 Unauthorized`.
 
-4. **Logout (Akhiri Sesi)**
-   - **Endpoint**: `DELETE /api/users/logout`
-   - **Headers Wajib**: `Authorization: Bearer <TOKEN>`
-   - **Respons Sukses**: `{ "data": "OK" }` (Prosedur ini akan memastikan musnahnya record token secara berbarengan di penyimpanan tabel database).
+4. **Logout**
+   - **Metode & Endpoint**: `DELETE /api/users/logout`
+   - **Header Wajib**: `Authorization: Bearer <TOKEN>`
+   - **Respons Berhasil**: `{ "data": "OK" }` (Proses eksekusi ini akan menghapus eksistensi sesi token yang aktif secara merata di dalam server *database*).
 
 ---
 
-## 🛠️ Step by Step - Cara Setup Project
+## 🛠️ Panduan Instalasi (*Project Setup*)
 
-Ikuti instruksi ringkas berikut untuk membangun lingkungan aplikasi di komputer Anda (Lokal):
+Ikuti petunjuk di bawah ini untuk mengonfigurasi proyek secara lokal:
 
-1. **Jalankan Instalasi Dependensi Runtime**
-   Pastikan Anda berada di root direktori project Terminal Anda, ketik:
+1. **Instalasi Dependensi**
+   Buka *terminal* Anda pada dasar direktori proyek, kemudian eksekusikan perintah:
    ```bash
    bun install
    ```
-2. **Environment & MySQL Setup**
-   Ubah kopian master dari file koneksi `.env.example` lalu namai menjadi `.env`. Kemudian sunting dan konfigurasikan rahasia identifikasi basis data Anda dengan mantap. ***Penting: Buatlah dahulu database target di GUI MySQL secara terpisah untuk penampung datanya.***
+2. **Konfigurasi Environment**
+   Salin *file* konfigurasi pelataran utama dari `.env.example` lalu simpanlah dengan ekstensi menjadi `.env`. Sunting keterangan nilai koneksi *database* sesuai spesifikasi server MySQL Anda. (Perhatian: Pastikan *database* kosongan sudah Anda sediakan sebelumnya).
    ```text
    DB_HOST=localhost
    DB_PORT=3306
@@ -104,33 +140,33 @@ Ikuti instruksi ringkas berikut untuk membangun lingkungan aplikasi di komputer 
    DB_PASSWORD=
    DB_NAME=api_elysiajs
    ```
-3. **Migrasikan Struktur Tabel Database**
-   Pastikan kapabilitas server MySQL lokal milikmu sudah nyala seutuhnya. Dorong skema database Anda dengan perintah Drizzle:
+3. **Migrasi Database Terstruktur**
+   Apabila *service* MySQL lokal Anda sudah terhubung, eksekusi migrasi skema tabel Drizzle menggunakan instruksi:
    ```bash
    bunx drizzle-kit push
    ```
 
 ---
 
-## 🏃 Menjalankan Aplikasi (Running The App)
+## 🏃 Menjalankan Aplikasi (*Running The Application*)
 
-Nyalakan pemroses server tunggal utama via modul pengeksekusi unggulan *bun*:
+Eksekusikan perintah berikut pada terminal CLI untuk menjalankan server perantara program:
 
 ```bash
 bun run src/index.ts
 
-# Alternatif: kamu bisa menjalankan fitur pemantau instan (auto re-load / hot-reload) saat masa perkode-an:
+# Gunakan argumen --watch untuk mengaktifkan pemuatan ulang server otomatis (Hot Reload / Watch Mode):
 # bun --watch run src/index.ts
 ```
-_Aplikasi Elysia kalian akan beroperasi dan berjalan mendengarkan trafik HTTP bawaannya di port `3000`._
+*Server API framework Elysia akan mengudara (Listen) standar pada port `3000`.* Kunjungi pustaka antarmuka pengguna interaktif pada rute URL `http://localhost:3000/swagger`.
 
 ---
 
-## 🧪 Menguji Mesin (Unit Testing)
+## 🧪 Eksekusi Pengujian Otomatis (*Unit Testing*)
 
-Guna menekan tingkatan galat pengembangan (Bugs Detection), sistem ini dilengkapi kumpulan skenario otomatis *End to End Unit Tests* penuh. Skrip tes akan dengan aman *membersihkan rekaman-tabel (teardown)* dahulu demi sterilisasi datanya jadi jangan ragu.
+Aplikasi ini dibekali dengan modul fungsionalitas otomasi kode uji berformat *End-to-End* berskala penuh. Pengecekan teknis dirancang secara disiplin untuk menjaga konsistensi perbaikan (*Teardown Database*) sehingga keamanan statusnya dijamin bersih dari redundansi persilangan data.
 
-Pengujian bisa dieksekusi sekejap lewat perintah:
+Lakukan identifikasi pengujian perangkat dengan menjalankan kode ini:
 ```bash
 bun test
 ```
