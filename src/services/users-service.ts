@@ -54,4 +54,33 @@ export const UserService = {
 
     return { data: token };
   },
+
+  async getCurrentUser(token: string) {
+    if (!token) {
+      throw new Error("Unauthorized");
+    }
+
+    // Find session
+    const session = await db.query.sessions.findFirst({
+      where: eq(sessions.token, token),
+    });
+
+    if (!session) {
+      throw new Error("Unauthorized");
+    }
+
+    // Find user
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.userId),
+    });
+
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    // Exclude password
+    const { password, ...userWithoutPassword } = user;
+
+    return { data: userWithoutPassword };
+  },
 };
