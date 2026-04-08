@@ -83,4 +83,24 @@ export const UserService = {
 
     return { data: userWithoutPassword };
   },
+
+  async logout(token: string) {
+    if (!token) {
+      throw new Error("Unauthorized");
+    }
+
+    // Find session
+    const session = await db.query.sessions.findFirst({
+      where: eq(sessions.token, token),
+    });
+
+    if (!session) {
+      throw new Error("Unauthorized");
+    }
+
+    // Delete session
+    await db.delete(sessions).where(eq(sessions.token, token));
+
+    return { data: "OK" };
+  },
 };
